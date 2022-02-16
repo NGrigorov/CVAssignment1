@@ -23,233 +23,47 @@ void createKnownBoardPositions(Size boardSize, float squareEdgeLength, vector<Po
 	{
 		for (int j = 0; j < boardSize.width; j++)
 		{
-			corners.push_back(Point3f(j * squareEdgeLength, i * squareEdgeLength, 0.0f));
+			corners.push_back(Point3f(j * squareEdgeLength, i * squareEdgeLength, 0));
 		}
 	}
 }
 
-void getChessBoardCorners(vector<Mat> images, vector<vector<Point2f>>& allFoundCorners, bool showResults)
+bool loadCameraCalibration(string name, Mat& cameraMatrix, Mat& distanceCoeficcients)
 {
-	for (vector<Mat>::iterator iter = images.begin(); iter != images.end(); iter++)
-	{
-		vector<Point2f> pointBuffer;
-		bool found = findChessboardCorners(*iter, Size(9, 6), pointBuffer, CALIB_CB_ADAPTIVE_THRESH | CALIB_CB_NORMALIZE_IMAGE);
-
-		if (found)
-		{
-			allFoundCorners.push_back(pointBuffer);
-		}
-
-		if (showResults)
-		{
-			drawChessboardCorners(*iter, Size(9, 6), pointBuffer, found);
-			imshow("Looking for corners", *iter);
-			waitKey(0);
-		}
-	}
-}
-
-void cameraCalibration(vector<Mat> calibrationImages, Size boardSize, float squaredEdgeLength, Mat& cameraMatrix, Mat& distanceCoeff, vector<Mat>& rVectors, vector<Mat>& tVectors)
-{
-	vector<vector<Point2f>> checkerboardImageSpacePoints;
-	getChessBoardCorners(calibrationImages, checkerboardImageSpacePoints, false);
-
-	vector<vector<Point3f>> worldSpacePoints(1);
-
-	createKnownBoardPositions(boardSize, squaredEdgeLength, worldSpacePoints[0]);
-	worldSpacePoints.resize(checkerboardImageSpacePoints.size(), worldSpacePoints[0]);
-
-	
-	distanceCoeff = Mat::zeros(8, 1, CV_64F);
-	calibrateCamera(worldSpacePoints, checkerboardImageSpacePoints, boardSize, cameraMatrix, distanceCoeff, rVectors, tVectors);
-}
-
-bool saveCameraCalibration(string name, Mat cameraMatrix, Mat distanceCoefficients, vector<Mat> rVectors, vector<Mat> tVectors)
-{
-	ofstream outStream(name);
-	if (outStream)
-	{
-		uint16_t rows = cameraMatrix.rows;
-		uint16_t cols = cameraMatrix.cols;
-
-		outStream << rows << endl;
-		outStream << cols << endl;
-
-		for (int r = 0; r < rows; r++)
-		{
-			for (int c = 0; c < cols; c++)
-			{
-				double value = cameraMatrix.at<double>(r, c);
-				outStream << value << endl;
-			}
-		}
-
-		rows = distanceCoefficients.rows;
-		cols = distanceCoefficients.cols;
-
-		outStream << rows << endl;
-		outStream << cols << endl;
-
-		for (int r = 0; r < rows; r++)
-		{
-			for (int c = 0; c < cols; c++)
-			{
-				double value = distanceCoefficients.at<double>(r, c);
-				outStream << value << endl;
-			}
-		}
-
-		outStream << rVectors.size() << endl;
-		for (int i = 0; i < rVectors.size(); i++)
-		{
-			rows = rVectors[i].rows;
-			cols = rVectors[i].cols;
-
-			outStream << rows << endl;
-			outStream << cols << endl;
-
-			for (int r = 0; r < rows; r++)
-			{
-				for (int c = 0; c < cols; c++)
-				{
-					double value = rVectors[i].at<double>(r, c);
-					outStream << value << endl;
-				}
-			}
-		}
-
-		outStream << tVectors.size() << endl;
-		for (int i = 0; i < tVectors.size(); i++)
-		{
-			rows = tVectors[i].rows;
-			cols = tVectors[i].cols;
-
-			outStream << rows << endl;
-			outStream << cols << endl;
-
-			for (int r = 0; r < rows; r++)
-			{
-				for (int c = 0; c < cols; c++)
-				{
-					double value = tVectors[i].at<double>(r, c);
-					outStream << value << endl;
-				}
-			}
-		}
-
-		outStream.close();
+		//set up a FileStorage object to read camera params from file
+		FileStorage fs;
+		fs.open(name, FileStorage::READ);
+		// read camera matrix and distortion coefficients from file
+		Mat intrinsics, distortion;
+		fs["camera_matrix"] >> cameraMatrix;
+		fs["distortion_coefficients"] >> distanceCoeficcients;
+		// close the input file
+		fs.release();
 		return true;
-	}
-	return false;
-}
-
-bool loadCameraCalibration(string name, Mat& cameraMatrix, Mat& distanceCoeficcients, vector<Mat>& rVectors, vector<Mat>& tVectors)
-{
-	ifstream inStream(name);
-	if (inStream)
-	{
-		uint16_t rows = cameraMatrix.rows;
-		uint16_t cols = cameraMatrix.cols;
-
-		inStream >> rows;
-		inStream >> cols;
-
-		cameraMatrix = Mat(Size(rows, cols),CV_64F);
-
-		for (int r = 0; r < rows; r++)
-		{
-			for (int c = 0; c < cols; c++)
-			{
-				double read = 0.0f;
-				inStream >> read;
-				cameraMatrix.at<double>(r, c) = read;
-				cout << cameraMatrix.at<double>(r, c) << endl;
-			}
-		}
-		//Distance Coefficients
-
-		inStream >> rows;
-		inStream >> cols;
-
-		distanceCoeficcients = Mat::zeros(rows, cols, CV_64F);
-
-		for (int r = 0; r < rows; r++)
-		{
-			for (int c = 0; c < cols; c++)
-			{
-				double read = 0.0f;
-				inStream >> read;
-				distanceCoeficcients.at<double>(r, c) = read;
-				cout << distanceCoeficcients.at<double>(r, c) << endl;
-			}
-		}
-		int arraySize = 0;
-		inStream >> arraySize;
-		cout << arraySize << endl;
-		for (int i = 0; i < arraySize; i++)
-		{
-			inStream >> rows;
-			inStream >> cols;
-			Mat tempRVector = Mat::zeros(rows, cols, CV_64F);
-			for (int r = 0; r < rows; r++)
-			{
-				for (int c = 0; c < cols; c++)
-				{
-					double read = 0.0f;
-					inStream >> read;
-					tempRVector.at<double>(r, c) = read;
-					
-				}
-			}
-			rVectors.push_back(tempRVector);
-		}
-
-		inStream >> arraySize;
-		cout << arraySize << endl;
-		for (int i = 0; i < arraySize; i++)
-		{
-			inStream >> rows;
-			inStream >> cols;
-			Mat tempTVector = Mat::zeros(rows, cols, CV_64F);
-			for (int r = 0; r < rows; r++)
-			{
-				for (int c = 0; c < cols; c++)
-				{
-					double read = 0.0f;
-					inStream >> read;
-					tempTVector.at<double>(r, c) = read;
-					
-				}
-			}
-			tVectors.push_back(tempTVector);
-		}
-
-		inStream.close();
-		return true;
-
-	}
-
-	return false;
 }
 
 // Display an Image
 int main(int argc, char** argv)
 {
-	int imagesTaken = 0;
+
 	Mat frame;
-	Mat drawToFrame;
+	Mat gray;
 
 	Mat cameraMatrix = Mat::eye(3,3,CV_64F);
 
-	Mat distanceCoefficients;
+	Mat distanceCoeff = Mat::zeros(8, 1, CV_64F);
 
 	vector<Mat> savedImages;
 
-	vector<vector<Point2f>> markerCorners, rejectedCandidates;
+	vector<Mat> rVectors, tVectors; //rotation and translation vectors for images
 
-	vector<Mat> rVectors, tVectors; //rotation and translation vectors
+	Mat rVecs = Mat(Size(3, 1), CV_64F); //Fo camerafeed
+	Mat tVecs = Mat(Size(3, 1), CV_64F);
+
 
 	VideoCapture vid(0);
+	vector<Point3f> localCornerPosition;
+	createKnownBoardPositions(cheesBoardDImensions, calibrationSquareDimension, localCornerPosition);
 
 	bool displayStuff = false;
 
@@ -267,47 +81,23 @@ int main(int argc, char** argv)
 		vector<Vec2f> foundPoints;
 		bool found = false;
 
-		found = findChessboardCorners(frame, cheesBoardDImensions, foundPoints, CALIB_CB_ADAPTIVE_THRESH | CALIB_CB_NORMALIZE_IMAGE | CALIB_CB_FAST_CHECK);
-		frame.copyTo(drawToFrame);
+		cvtColor(frame, gray, COLOR_BGR2GRAY);
+		found = findChessboardCorners(gray, cheesBoardDImensions, foundPoints, CALIB_CB_ADAPTIVE_THRESH | CALIB_CB_NORMALIZE_IMAGE | CALIB_CB_FAST_CHECK);
+		
 
 		if (found) {
-			drawChessboardCorners(drawToFrame, cheesBoardDImensions, foundPoints, found);
-			imshow("Webcam", drawToFrame);
+			drawChessboardCorners(frame, cheesBoardDImensions, foundPoints, found);
+			solvePnP(localCornerPosition, foundPoints, cameraMatrix, distanceCoeff, rVecs, tVecs);
+			drawFrameAxes(frame, cameraMatrix, distanceCoeff, rVecs, tVecs, 0.15f);
+			imshow("Webcam", frame);
 		}
 		else
-			imshow("Webcam", frame);
+			imshow("Webcam", gray);
 
 		char character = waitKey(1000 / framesPS);
 
 		switch (character) 
 		{
-		case ' ': //Spacebar key
-			//saving an image via spacebar
-			if (found)
-			{
-				Mat temp;
-				frame.copyTo(temp);
-				savedImages.push_back(temp);
-				string path = "Images\\Image_" + std::to_string(imagesTaken) + ".jpg";
-				imwrite(path, temp);
-				imagesTaken++;
-				cout << imagesTaken << endl;
-			}
-			break;
-		case 13: //Enter key
-			//start calibration
-			if (savedImages.size() > 15)
-			{
-				cout << "Starting calibration sequence" << endl;
-				cameraCalibration(savedImages, cheesBoardDImensions, calibrationSquareDimension, cameraMatrix, distanceCoefficients, rVectors, tVectors);
-				saveCameraCalibration("cameracalibrationFile", cameraMatrix, distanceCoefficients, rVectors, tVectors);
-				cout << "Done!" << endl;
-			}
-			else
-			{
-				cout << "I need at least 16 images, so far I have " << imagesTaken << endl;
-			}
-			break;
 		case 27: //Escape key
 			//exit
 			return 0;
@@ -316,23 +106,10 @@ int main(int argc, char** argv)
 		case 101: //e key
 			//load camera matrix from file
 			cout << "Loading calibration file" << endl;
-			if(loadCameraCalibration("cameracalibrationFile", cameraMatrix, distanceCoefficients, rVectors, tVectors))
+			if(loadCameraCalibration("out_camera_data.xml", cameraMatrix, distanceCoeff))
 				cout << "Done!" << endl;
 			else
 				cout << "Failed no file found!" << endl;
-			break;
-		case 102: //f key
-		//show axiss on saved images
-			cout << "Drawing axis on images" << endl;
-			for (int i = 0; i < rVectors.size(); i++)
-			{
-				string path = "Images\\Image_" + std::to_string(i) + ".jpg";
-				Mat image = imread(path);
-				drawFrameAxes(image, cameraMatrix, distanceCoefficients, rVectors[i], tVectors[i], 0.5f, 3);
-				path = "AxisImages\\Image_" + std::to_string(i) + ".jpg";
-				imwrite(path, image);
-			}
-			cout << "Done!" << endl;
 			break;
 		case 112: //p key
 	//switch boolean that shows stuff on screen
