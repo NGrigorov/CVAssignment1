@@ -45,7 +45,6 @@ bool loadCameraCalibration(string name, Mat& cameraMatrix, Mat& distanceCoeficci
 // Display an Image
 int main(int argc, char** argv)
 {
-
 	Mat frame;
 	Mat gray;
 
@@ -53,19 +52,21 @@ int main(int argc, char** argv)
 
 	Mat distanceCoeff = Mat::zeros(8, 1, CV_64F);
 
-	vector<Mat> savedImages;
-
-	vector<Mat> rVectors, tVectors; //rotation and translation vectors for images
-
 	Mat rVecs = Mat(Size(3, 1), CV_64F); //Fo camerafeed
 	Mat tVecs = Mat(Size(3, 1), CV_64F);
-
 
 	VideoCapture vid(0);
 	vector<Point3f> localCornerPosition;
 	createKnownBoardPositions(cheesBoardDImensions, calibrationSquareDimension, localCornerPosition);
 
 	bool displayStuff = false;
+
+	vector<Point3f> framePoints;
+	//generate points in the reference frame
+	framePoints.push_back(Point3d(0.0, 0.0, 0.0));
+	framePoints.push_back(Point3d(0.1, 0.0, 0.0));
+	framePoints.push_back(Point3d(0.0, 0.1, 0.0));
+	framePoints.push_back(Point3d(0.0, 0.0, -0.1));
 
 	if (!vid.isOpened())
 	{
@@ -79,6 +80,7 @@ int main(int argc, char** argv)
 		if (!vid.read(frame)) break;
 
 		vector<Vec2f> foundPoints;
+		vector<Point2f> imageFramePoints;
 		bool found = false;
 
 		cvtColor(frame, gray, COLOR_BGR2GRAY);
@@ -88,7 +90,15 @@ int main(int argc, char** argv)
 		if (found) {
 			drawChessboardCorners(frame, cheesBoardDImensions, foundPoints, found);
 			solvePnP(localCornerPosition, foundPoints, cameraMatrix, distanceCoeff, rVecs, tVecs);
-			drawFrameAxes(frame, cameraMatrix, distanceCoeff, rVecs, tVecs, 0.15f);
+			//drawFrameAxes(frame, cameraMatrix, distanceCoeff, rVecs, tVecs, 0.15f);
+			projectPoints(framePoints, rVecs, tVecs, cameraMatrix, distanceCoeff, imageFramePoints);
+
+			//DRAWING
+			//Draws XYZ lines in different colors
+			line(frame, imageFramePoints[0], imageFramePoints[1], CV_RGB(255, 0, 0), 3);
+			line(frame, imageFramePoints[0], imageFramePoints[2], CV_RGB(0, 255, 0), 3);
+			line(frame, imageFramePoints[0], imageFramePoints[3], CV_RGB(0, 0, 255), 3);
+
 			imshow("Webcam", frame);
 		}
 		else
