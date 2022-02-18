@@ -1,2 +1,17 @@
 ﻿  CVAssignment1CPP.cpp
+C:\Users\nikol\OneDrive\Documents\School\Computer Vision\Assignments\CVAssignment1CPP\CVAssignment1\CVAssignment1CPP\CVAssignment1CPP.cpp(93,94): warning C4244: 'argument': conversion from 'double' to '_Tp', possible loss of data
+          with
+          [
+              _Tp=float
+          ]
+C:\Users\nikol\OneDrive\Documents\School\Computer Vision\Assignments\CVAssignment1CPP\CVAssignment1\CVAssignment1CPP\CVAssignment1CPP.cpp(93,68): warning C4244: 'argument': conversion from 'double' to '_Tp', possible loss of data
+          with
+          [
+              _Tp=float
+          ]
+C:\Users\nikol\OneDrive\Documents\School\Computer Vision\Assignments\CVAssignment1CPP\CVAssignment1\CVAssignment1CPP\CVAssignment1CPP.cpp(93,43): warning C4244: 'argument': conversion from 'double' to '_Tp', possible loss of data
+          with
+          [
+              _Tp=float
+          ]
   CVAssignment1CPP.vcxproj -> C:\Users\nikol\OneDrive\Documents\School\Computer Vision\Assignments\CVAssignment1CPP\CVAssignment1\x64\Debug\CVAssignment1CPP.exe
